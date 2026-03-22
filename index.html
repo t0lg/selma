@@ -8,8 +8,6 @@
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
   />
 
   <style>
@@ -39,7 +37,6 @@
       border-radius: 16px;
       box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
       text-align: center;
-      min-width: 220px;
     }
 
     .map-title h1 {
@@ -56,7 +53,6 @@
 
     .custom-popup .leaflet-popup-content-wrapper {
       border-radius: 18px;
-      padding: 4px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
     }
 
@@ -67,22 +63,13 @@
 
     .popup-card h3 {
       margin: 0 0 6px;
-      font-size: 18px;
       color: #c62828;
-    }
-
-    .popup-card p {
-      margin: 0 0 10px;
-      font-size: 13px;
-      line-height: 1.4;
-      color: #444;
     }
 
     .photo-row {
       display: flex;
       gap: 8px;
       overflow-x: auto;
-      padding-bottom: 4px;
     }
 
     .photo-row img {
@@ -91,24 +78,16 @@
       object-fit: cover;
       border-radius: 12px;
       cursor: pointer;
-      flex: 0 0 auto;
-      border: 1px solid #eee;
-      transition: transform 0.2s ease;
-    }
-
-    .photo-row img:hover {
-      transform: scale(1.04);
     }
 
     .lightbox {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.88);
+      background: rgba(0, 0, 0, 0.9);
       z-index: 5000;
       align-items: center;
       justify-content: center;
-      padding: 20px;
     }
 
     .lightbox.active {
@@ -116,9 +95,9 @@
     }
 
     .lightbox img {
-      max-width: 95vw;
+      max-width: 90vw;
       max-height: 85vh;
-      border-radius: 14px;
+      border-radius: 12px;
     }
 
     .lightbox-close {
@@ -133,6 +112,7 @@
 </head>
 
 <body>
+
   <div class="map-title">
     <h1>Placeholder name ❤️</h1>
     <p>buraya çok aşırı havalı ve anlamlı bir açıklama koycam</p>
@@ -141,7 +121,7 @@
   <div id="map"></div>
 
   <div id="lightbox" class="lightbox">
-    <span class="lightbox-close" id="lightboxClose">&times;</span>
+    <span id="lightboxClose" class="lightbox-close">&times;</span>
     <img id="lightboxImage" />
   </div>
 
@@ -155,8 +135,6 @@
       attribution: "&copy; OpenStreetMap contributors"
     }).addTo(map);
 
-    const BASE_PATH = "izmir/";
-
     const heartIcon = L.divIcon({
       className: "",
       html: `
@@ -169,66 +147,67 @@
       popupAnchor: [0, -28]
     });
 
-    const locations = [
-      {
-        title: "Saat Kulesi",
-        lat: 38.418713,
-        lng: 27.128526,
-        note: "Sen, ben ve İzmir'in en klişe lokasyonu.",
-        photos: [
-          BASE_PATH + "cemmam1.jpg",
-          BASE_PATH + "beraber1.jpg"
-        ]
-      }
-    ];
-
-    const bounds = [];
-
-    locations.forEach((loc) => {
-      bounds.push([loc.lat, loc.lng]);
-
-      const photoHtml = loc.photos.length
-        ? `
-          <div class="photo-row">
-            ${loc.photos.map(src =>
-              `<img src="${src}" onclick="openLightbox('${src}')">`
-            ).join("")}
-          </div>
-        `
-        : "";
-
-      const popupHtml = `
-        <div class="popup-card">
-          <h3>${loc.title}</h3>
-          <p>${loc.note}</p>
-          ${photoHtml}
-        </div>
-      `;
-
-      L.marker([loc.lat, loc.lng], { icon: heartIcon })
-        .addTo(map)
-        .bindPopup(popupHtml, { className: "custom-popup" });
-    });
-
-    map.fitBounds(bounds, {
-      padding: [50, 50],
-      maxZoom: 15
-    });
-
     function openLightbox(src) {
       document.getElementById("lightbox").classList.add("active");
       document.getElementById("lightboxImage").src = src;
     }
 
-    document.getElementById("lightboxClose").onclick = () => {
+    function closeLightbox() {
       document.getElementById("lightbox").classList.remove("active");
-    };
+      document.getElementById("lightboxImage").src = "";
+    }
+
+    document.getElementById("lightboxClose").onclick = closeLightbox;
 
     document.getElementById("lightbox").onclick = (e) => {
       if (e.target.id === "lightbox") {
-        document.getElementById("lightbox").classList.remove("active");
+        closeLightbox();
       }
     };
+
+    fetch("locations.json")
+      .then(response => response.json())
+      .then(locations => {
+
+        const bounds = [];
+
+        locations.forEach(loc => {
+
+          bounds.push([loc.lat, loc.lng]);
+
+          const photoHtml = loc.photos.length > 0
+            ? `
+              <div class="photo-row">
+                ${loc.photos.map(src =>
+                  `<img src="${src}" onclick="openLightbox('${src}')">`
+                ).join("")}
+              </div>
+            `
+            : "";
+
+          const popupHtml = `
+            <div class="popup-card">
+              <h3>${loc.title}</h3>
+              <p>${loc.note}</p>
+              ${photoHtml}
+            </div>
+          `;
+
+          L.marker([loc.lat, loc.lng], { icon: heartIcon })
+            .addTo(map)
+            .bindPopup(popupHtml, { className: "custom-popup" });
+        });
+
+        if (bounds.length > 0) {
+          map.fitBounds(bounds, {
+            padding: [50, 50],
+            maxZoom: 15
+          });
+        } else {
+          map.setView([38.4237, 27.1428], 12);
+        }
+      });
   </script>
+
 </body>
 </html>
